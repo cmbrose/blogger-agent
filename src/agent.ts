@@ -1,6 +1,6 @@
 import { getClient } from './client.js';
 import { RuntimeContext } from './context.js';
-import { doneTool, queryUser } from './tools/control.js';
+import { doneTool, queryUser, submitDraft } from './tools/control.js';
 import { readDirectory, readFile } from './tools/files.js';
 import { getUserBlog, listUserBlogs } from './tools/github.js';
 import { Chat } from '@agent/openai';
@@ -22,6 +22,7 @@ export class Agent {
             getUserBlog,
             readDirectory,
             readFile,
+            submitDraft,
         ];
 
         const request: Chat.Request = {
@@ -52,57 +53,65 @@ export class Agent {
 
         let resp = await getClient().chat(request);
 
-        while (resp.choices[0].message.tool_calls?.[0].function.name !== 'done') {
+        while (resp.choices[0].message.tool_calls?.find(tool => tool.function.name !== 'done')) {
             request.messages.push({
                 role: 'assistant',
                 content: resp.choices[0].message.content,
                 tool_calls: resp.choices[0].message.tool_calls,
             });
 
-            let toolCall = resp.choices[0].message.tool_calls?.[0];
-
-            if (toolCall) {
-                console.log("AGENT-TOOLCALL|");
-                console.log(`${toolCall.function.name}(${Object.entries(JSON.parse(toolCall.function.arguments)).map(([key, value]) => `${key}: "${value}"`).join(', ')})`);
-                console.log();
-            } else {
-                toolCall = {
-                    id: 'dynamic',
-                    type: 'function',
-                    function: {
-                        name: 'queryUser',
-                        arguments: JSON.stringify({
-                            query: resp.choices[0].message.content,
-                        }),
-                    }
+            const toolCalls = resp.choices[0].message.tool_calls ?? [{
+                id: 'dynamic',
+                type: 'function',
+                function: {
+                    name: 'queryUser',
+                    arguments: JSON.stringify({
+                        query: resp.choices[0].message.content,
+                    }),
                 }
-            }
+            }];
 
-            const result = await tools.find(tool => tool.name === toolCall?.function.name)?.execute(JSON.parse(toolCall?.function.arguments));
-            const value = (result!.ok ? result?.value : "") ?? "";
+            for (let toolCall of toolCalls) {
+                if (toolCall.function.name !== 'dynamic') {
+                    console.log("AGENT-TOOLCALL|");
+                    console.log(`${toolCall.function.name}(${Object.entries(JSON.parse(toolCall.function.arguments)).map(([key, value]) => `${key}: "${value}"`).join(', ')})`);
+                    console.log();
+                }
 
-            if (toolCall.id !== 'dynamic') {
-                console.log("TOOL|");
-                console.log(value);
-                console.log();
+                const result = await tools.find(tool => tool.name === toolCall?.function.name)?.execute(JSON.parse(toolCall?.function.arguments));
+                const value = (result!.ok ? result?.value : "") ?? "";
 
-                request.messages.push({
-                    role: 'tool',
-                    content: (result!.ok ? result?.value : "") ?? "",
-                    tool_call_id: toolCall?.id,
-                });
-            } else {
-                console.log("USER|");
-                console.log(value);
-                console.log();
+                if (toolCall.id !== 'dynamic') {
+                    console.log("TOOL|");
+                    console.log(value);
+                    console.log();
 
-                request.messages.push({
-                    role: 'user',
-                    content: value,
-                });
+                    request.messages.push({
+                        role: 'tool',
+                        content: (result!.ok ? result?.value : "") ?? "",
+                        tool_call_id: toolCall?.id,
+                    });
+                } else {
+                    console.log("USER|");
+                    console.log(value);
+                    console.log();
+
+                    request.messages.push({
+                        role: 'user',
+                        content: value,
+                    });
+                }
             }
 
             resp = await getClient().chat(request);
         }
+
+        // Final 'done' tool
+        console.log("AGENT-TOOLCALL|");
+        console.log(`${resp.choices[0].message.tool_calls?.[0].function.name}(${Object.entries(JSON.parse(resp.choices[0].message.tool_calls?.[0].function.arguments!)).map(([key, value]) => `${key}: "${value}"`).join(', ')})`);
+        console.log();
+        console.log("------------------");
+        console.log();
+        console.log(JSON.parse(resp.choices[0].message.tool_calls?.[0].function.arguments!).post)
     }
 }

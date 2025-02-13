@@ -2,6 +2,7 @@ import { t, tool } from '@agent/tool';
 import { REASON_PARAMETER_SCHEMA } from '../utils.js';
 import { Ok } from '@agent/tool/result';
 import fs from 'node:fs';
+import path from 'node:path';
 
 export const readDirectory = tool({
     name: 'readDirectory',
@@ -18,8 +19,13 @@ export const readDirectory = tool({
         })
     }),
     execute: async (input) => {
-        const result = await fs.promises.readdir("/Users/cmbrose/src/blogger-agent/" + input.directory, { recursive: input.recursive });
-        return Ok(result.map(file => file.substring('/Users/cmbrose/src/blogger-agent/'.length)).join('\n'));
+        try {
+            const root = path.join("/workspaces/blogger-agent/", input.directory);
+            const result = await fs.promises.readdir(root, { recursive: input.recursive });
+            return Ok(result.map(file => path.join(root, file)).join('\n'));
+        } catch {
+            return Ok("DIRECTORY DOES NOT EXIST")
+        }
     },
 });
 
@@ -34,7 +40,11 @@ export const readFile = tool({
         }),
     }),
     execute: async (input) => {
-        const result = await fs.promises.readFile("/Users/cmbrose/src/blogger-agent/" + input.path);
-        return Ok(result.toString('utf-8'));
+        try {
+            const result = await fs.promises.readFile(input.path);
+            return Ok(result.toString('utf-8'));
+        } catch {
+            return Ok("FILE NOT FOUND")
+        }
     },
 });

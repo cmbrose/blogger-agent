@@ -1,6 +1,7 @@
 import { t, tool } from '@agent/tool';
 import { getUserInput, REASON_PARAMETER_SCHEMA } from '../utils.js';
 import { Ok } from '@agent/tool/result';
+import fs from "node:fs";
 
 export const doneTool = tool({
     name: 'done',
@@ -14,6 +15,23 @@ export const doneTool = tool({
     }),
     execute(_input) {
         return Ok();
+    },
+});
+
+export const submitDraft = tool({
+    name: 'submitDraft',
+    description: 'Submit a blog draft to the user for review',
+    input: t.object({
+        reason: REASON_PARAMETER_SCHEMA,
+        post: t.string({
+            description: 'The blog post draft.',
+            examples: ['# My Blog Post\n\nThis is the content of my blog post.'],
+        }),
+    }),
+    async execute(input) {
+        await fs.promises.writeFile("/workspaces/blogger-agent/draft.md", input.post);
+        const userInput = await getUserInput("Is the draft OK?");
+        return Ok(userInput);
     },
 });
 

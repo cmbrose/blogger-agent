@@ -73,7 +73,7 @@ export const getUserBlog = tool({
 
         const resp = await octokitClient.graphql<GetUserBlogResponse>(`query {
             repository(owner: "${owner}", name: "${repo}") {
-              discussion (first: ${input.discussionNumber}) {
+              discussion (number: ${input.discussionNumber}) {
                 body
               }
             }
