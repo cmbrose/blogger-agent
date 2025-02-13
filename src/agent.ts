@@ -1,6 +1,7 @@
 import { getClient } from './client.js';
 import { RuntimeContext } from './context.js';
 import { doneTool, queryUser } from './tools/control.js';
+import { readDirectory, readFile } from './tools/files.js';
 import { getUserBlog, listUserBlogs } from './tools/github.js';
 import { Chat } from '@agent/openai';
 
@@ -19,6 +20,8 @@ export class Agent {
             queryUser,
             listUserBlogs,
             getUserBlog,
+            readDirectory,
+            readFile,
         ];
 
         const request: Chat.Request = {
@@ -30,7 +33,7 @@ export class Agent {
                 role: 'user',
                 content: input,
             }],
-            tool_choice: 'auto',
+            tool_choice: 'required',
             tools: tools.map(tool => ({
                 type: 'function',
                 function: {
@@ -39,6 +42,13 @@ export class Agent {
                 }
             })),
         };
+
+        console.log('SYSTEM|');
+        console.log(this.systemPrompt);
+        console.log();
+        console.log('USER|');
+        console.log(input);
+        console.log();
 
         let resp = await getClient().chat(request);
 
@@ -51,7 +61,11 @@ export class Agent {
 
             let toolCall = resp.choices[0].message.tool_calls?.[0];
 
-            if (!toolCall) {
+            if (toolCall) {
+                console.log("AGENT-TOOLCALL|");
+                console.log(`${toolCall.function.name}(${Object.entries(JSON.parse(toolCall.function.arguments)).map(([key, value]) => `${key}: "${value}"`).join(', ')})`);
+                console.log();
+            } else {
                 toolCall = {
                     id: 'dynamic',
                     type: 'function',
@@ -65,17 +79,26 @@ export class Agent {
             }
 
             const result = await tools.find(tool => tool.name === toolCall?.function.name)?.execute(JSON.parse(toolCall?.function.arguments));
+            const value = (result!.ok ? result?.value : "") ?? "";
 
             if (toolCall.id !== 'dynamic') {
+                console.log("TOOL|");
+                console.log(value);
+                console.log();
+
                 request.messages.push({
                     role: 'tool',
                     content: (result!.ok ? result?.value : "") ?? "",
                     tool_call_id: toolCall?.id,
                 });
             } else {
+                console.log("USER|");
+                console.log(value);
+                console.log();
+
                 request.messages.push({
                     role: 'user',
-                    content: (result!.ok ? result?.value : "") ?? "",
+                    content: value,
                 });
             }
 

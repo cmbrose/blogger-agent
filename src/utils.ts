@@ -8,7 +8,7 @@ export function getUserInput(message: string): Promise<string> {
             output: process.stdout,
         });
 
-        rl.question(message, (answer) => {
+        rl.question("AGENT|\n" + message, (answer) => {
             rl.close();
             resolve(answer);
         });

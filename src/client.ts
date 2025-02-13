@@ -15,8 +15,6 @@ const LLAMA_3_2: Client = {
         });
         const responseBody = await response.json();
 
-        console.log(JSON.stringify(responseBody.choices, null, 2));
-
         return responseBody;
     },
 };
