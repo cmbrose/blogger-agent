@@ -1,0 +1,33 @@
+{
+  "name": "blogger-agent",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "bin": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "agent": "tsx src/index.ts agent"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cmbrose/blogger-agent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cmbrose/blogger-agent/issues"
+  },
+  "homepage": "https://github.com/cmbrose/blogger-agent#readme",
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "@types/nunjucks": "^3.2.6",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@agent/openai": "npm:@jsr/agent__openai@^0.0.7",
+    "@agent/tool": "npm:@jsr/agent__tool@^0.0.4",
+    "nunjucks": "^3.2.4",
+    "octokit": "^4.1.1"
+  }
+}
